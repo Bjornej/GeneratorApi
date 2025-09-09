@@ -5,9 +5,10 @@ using System.IO;
 using System.Net.Http;
 using ByteBard.AsyncAPI.Models;
 using ByteBard.AsyncAPI.Readers;
+using ByteBard.AsyncAPI.Validations;
 
 //return GenerateOpenApi(new OpenApiOptions() { ApiUrl = "https://raw.githubusercontent.com/Redocly/museum-openapi-example/refs/heads/main/openapi.yaml", OutputFile = "test.cs" });
-return GenerateAsyncApi(new AsyncApiOptions() { FileName = "C:\\\\TEmp\\test.asyncapi.txt", OutputFile = @"C:\\temp\test.cs" });
+return GenerateAsyncApi(new AsyncApiOptions() { FileName = "C:\\\\TEmp\\test2.asyncapi.txt", OutputFile = @"C:\\temp\test.cs" });
 
 return CommandLine.Parser.Default.ParseArguments<AsyncApiOptions, OpenApiOptions>(args)
    .MapResult(
@@ -26,7 +27,12 @@ static int GenerateAsyncApi(AsyncApiOptions opts)
     }
     else
     {
-        var res = new AsyncApiStringReader(new AsyncApiReaderSettings() { }).Read(File.ReadAllText(opts.FileName), out var diagnostic);
+        var res = new AsyncApiStringReader(new AsyncApiReaderSettings() {
+            ReferenceResolution = ReferenceResolutionSetting.ResolveAllReferences,
+        }).Read(File.ReadAllText(opts.FileName), out var diagnostic);
+
+        var validator = new AsyncApiValidator(ValidationRuleSet.GetDefaultRuleSet(), res);
+        
         doc = res;
     }
 

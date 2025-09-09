@@ -34,9 +34,9 @@
 
             var message = string.Empty;
             message += "  namespace " + namespac + " { " + Environment.NewLine;
-            message += "    public class " + tipo + " : DomainEvent { " + Environment.NewLine;
+            message += "    public class " + tipo + " : DomainEvent { " + Environment.NewLine; //eredita dal necessario
 
-
+            ICollection<AsyncApiJsonSchemaReference> schemas = new List<AsyncApiJsonSchemaReference>();
 
             var schema = (AsyncApiJsonSchema)evt.Payload.Schema;
 
@@ -47,11 +47,30 @@
                     foreach (var prope in prop.Properties)
                     {
                         message += "      " + ConvertiProp(prope.Key, prope.Value) + Environment.NewLine;
+                        if(prope.Value.Items != null)
+                        {
+                            schemas.Add((AsyncApiJsonSchemaReference)prope.Value.Items);
+                        }
+                        //se prop.value.items aggiungi a lista di cose da fare
                     }
                 }
             }
 
             message += "    }" + Environment.NewLine;
+
+            foreach(var extraScheme in schemas)
+            {
+                message += Environment.NewLine;
+                message += "    public class " + Upper(extraScheme.Reference.Reference.Substring(extraScheme.Reference.Reference.LastIndexOf("/")+1)) + " {" + Environment.NewLine;
+
+                foreach(var extraProp in extraScheme.Properties)
+                {
+                    message += "      " + ConvertiProp(extraProp.Key, extraProp.Value) + Environment.NewLine;
+                }
+
+                message += "    }" + Environment.NewLine;
+            }
+
             message+= "  }" + Environment.NewLine + Environment.NewLine;
             return message;
         }
