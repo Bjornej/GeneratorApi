@@ -1,5 +1,6 @@
 ﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Models.References;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -12,11 +13,11 @@ namespace ApiGenerator
         /// </summary>
         /// <param name="doc">Document oda convertire</param>
         /// <returns>Stringa con client generato dal documento</returns>
-        public static string ConvertOpenApi(OpenApiDocument doc)
+        public static string ConvertOpenApi(OpenApiDocument doc, string desiredNamespace)
         {
             StringBuilder a = new StringBuilder();
 
-            a.AppendLine("namespace Test {");
+            a.AppendLine("namespace "+ desiredNamespace +" {");
             a.AppendLine("  using ServiziCgn.Framework.WebClient;");
             a.AppendLine("  using System.Collections.Generic;");
             a.AppendLine();
@@ -87,7 +88,7 @@ namespace ApiGenerator
             {
                 var rew = (OpenApiSecurityRequirement)doc.Paths.First().Value.Operations.First().Value.Security.First((x => x is OpenApiSecurityRequirement));
 
-                if (rew.Values.First().First() == "bearerAuth")
+                if (rew.Values.First().Count() > 0 && rew.Values.First().First() == "bearerAuth")
                 {
                     return "Bearer";
                 }
@@ -123,19 +124,39 @@ namespace ApiGenerator
             }
             else
             {
+                string baseClass = null;
+
+                if (value.AllOf.Any(x => x is OpenApiSchemaReference))
+                {
+                    baseClass = value.AllOf.First(x => x is OpenApiSchemaReference).Reference.Id;
+                }
+
                 result += "  /// <summary>" + Environment.NewLine   ;
-                result += $"  ///   {value.Description}" + Environment.NewLine;
+                result += $"  ///   {(value.Description??string.Empty).Replace("\r\n", "\r\n  ///   ")}" + Environment.NewLine;
                 result += "  /// </summary>" + Environment.NewLine;
-                result += "  public class " + key + " {" + Environment.NewLine;
+                result += "  public class " + key + (baseClass!= null ? (": " + baseClass) : string.Empty) + " {" + Environment.NewLine;
 
                 foreach (var prop in value.Properties)
                 {
                     result += Environment.NewLine;
                     result += "    /// <summary>" + Environment.NewLine;
-                    result += "    /// " + (prop.Value.Description ?? string.Empty).Replace("\r\n", " ") + Environment.NewLine;
+                    result += "    /// " + (prop.Value.Description ?? string.Empty).Replace("\r\n", "\r\n    ///   ") + Environment.NewLine;
                     result += "    /// <summary>" + Environment.NewLine;
                     result += "    public " + Convert(prop.Value) + " " + prop.Key + " { get; set;}" + Environment.NewLine;
                 }
+
+                if (value.AllOf.Any(x => x is OpenApiSchema))
+                {
+                    foreach (var prop in value.AllOf.Where(x => x is OpenApiSchema).First().Properties)
+                    {
+                        result += Environment.NewLine;
+                        result += "    /// <summary>" + Environment.NewLine;
+                        result += "    /// " + (prop.Value.Description ?? string.Empty).Replace("\r\n", "\r\n    ///   ") + Environment.NewLine;
+                        result += "    /// <summary>" + Environment.NewLine;
+                        result += "    public " + Convert(prop.Value) + " " + prop.Key + " { get; set;}" + Environment.NewLine;
+                    }
+                }
+
             }
 
             result += "  }" + Environment.NewLine;
@@ -169,15 +190,15 @@ namespace ApiGenerator
                     case JsonSchemaType.String:
                         switch (type.Format)
                         {
-                            case "date-time": return "DateTime";
-                            case "date": return "DateOnly";
+                            case "date-time": return type.Nullable ? "DateTime?": "DateTime";
+                            case "date": return type.Nullable ? "DateOnly?" : "DateOnly";
                             case "uuid": return "Guid";
                             case null: return "string";
                             default: return "test";
                         }
-                    case JsonSchemaType.Boolean: return "bool";
+                    case JsonSchemaType.Boolean: return type.Nullable ? "bool?" : "bool";
                     case JsonSchemaType.Integer: return "int";
-                    case JsonSchemaType.Number: return "number";
+                    case JsonSchemaType.Number: return "float";
                     case JsonSchemaType.Object: return type.Type.Value.ToString();
                     case JsonSchemaType.Array: return "ICollection<" + (type.Items.Reference != null ? type.Items.Reference.Id : type.Items.Type) + ">";
                     default:

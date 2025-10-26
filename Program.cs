@@ -1,14 +1,9 @@
 ﻿using ApiGenerator;
-using CommandLine;
-using Microsoft.OpenApi.Models;
-using System.IO;
-using System.Net.Http;
 using ByteBard.AsyncAPI.Models;
 using ByteBard.AsyncAPI.Readers;
 using ByteBard.AsyncAPI.Validations;
-
-//return GenerateOpenApi(new OpenApiOptions() { ApiUrl = "https://raw.githubusercontent.com/Redocly/museum-openapi-example/refs/heads/main/openapi.yaml", OutputFile = "test.cs" });
-return GenerateAsyncApi(new AsyncApiOptions() { FileName = "C:\\\\TEmp\\test2.asyncapi.txt", OutputFile = @"C:\\temp\test.cs" });
+using CommandLine;
+using Microsoft.OpenApi.Models;
 
 return CommandLine.Parser.Default.ParseArguments<AsyncApiOptions, OpenApiOptions>(args)
    .MapResult(
@@ -22,17 +17,18 @@ static int GenerateAsyncApi(AsyncApiOptions opts)
     if (opts.ApiUrl != null)
     {
         var httpClient = new HttpClient();
-        var stream =  httpClient.GetStreamAsync(opts.ApiUrl).Result;
-        doc  = new AsyncApiStreamReader().Read(stream, out var diagnostic);
+        var stream = httpClient.GetStreamAsync(opts.ApiUrl).Result;
+        doc = new AsyncApiStreamReader().Read(stream, out var diagnostic);
     }
     else
     {
-        var res = new AsyncApiStringReader(new AsyncApiReaderSettings() {
+        var res = new AsyncApiStringReader(new AsyncApiReaderSettings()
+        {
             ReferenceResolution = ReferenceResolutionSetting.ResolveAllReferences,
         }).Read(File.ReadAllText(opts.FileName), out var diagnostic);
 
         var validator = new AsyncApiValidator(ValidationRuleSet.GetDefaultRuleSet(), res);
-        
+
         doc = res;
     }
 
@@ -53,10 +49,10 @@ static int GenerateOpenApi(OpenApiOptions opts)
     else
     {
         var res = Microsoft.OpenApi.Reader.OpenApiModelFactory.Load(opts.FileName);
-        doc =res.OpenApiDocument;
+        doc = res.OpenApiDocument;
     }
 
-    var f = OpenAPiGenerator.ConvertOpenApi(doc);
+    var f = OpenAPiGenerator.ConvertOpenApi(doc, opts.DesiredNamespace);
 
     File.WriteAllText(opts.OutputFile, f);
 

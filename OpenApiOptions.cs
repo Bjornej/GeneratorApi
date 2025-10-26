@@ -13,5 +13,8 @@
 
         [Option('o', "outputfile", Required = true, HelpText = "File di output")]
         public string OutputFile { get; set; }
+
+        [Option('n', "namespace", Required = true, HelpText = "Namespace da usare")]
+        public string DesiredNamespace { get; set; }
     }
 }
